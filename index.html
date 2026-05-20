@@ -21,7 +21,6 @@
             overflow: hidden;
         }
 
-        /* Контейнер */
         .container {
             width: 100%;
             max-width: 600px;
@@ -33,7 +32,6 @@
             position: relative;
         }
 
-        /* Экран пароля */
         .password-screen {
             position: absolute;
             top: 0;
@@ -44,8 +42,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 10;
-            transition: all 0.3s ease;
+            z-index: 20;
         }
 
         .password-box {
@@ -78,8 +75,6 @@
             border-radius: 15px;
             margin-bottom: 20px;
             text-align: center;
-            letter-spacing: 2px;
-            transition: all 0.3s;
         }
 
         .password-box input:focus {
@@ -97,11 +92,6 @@
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .password-box button:active {
-            transform: scale(0.98);
         }
 
         .error-msg {
@@ -111,20 +101,73 @@
             display: none;
         }
 
-        /* Чат (скрыт по умолчанию) */
+        .user-select-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 15;
+        }
+
+        .user-select-box {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 30px;
+            text-align: center;
+            width: 85%;
+            max-width: 320px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .user-select-box h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 26px;
+        }
+
+        .user-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .user-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .user-btn.katya {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .user-btn.kirill {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
         .chat-screen {
             display: none;
             flex-direction: column;
             height: 100%;
         }
 
-        /* Шапка чата */
         .chat-header {
             background: white;
-            padding: 20px 20px 15px;
+            padding: 20px;
             text-align: center;
             border-bottom: 1px solid #e0e0e0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
         .chat-header h1 {
@@ -132,13 +175,15 @@
             color: #333;
         }
 
-        .chat-header p {
+        .current-user-badge {
+            background: #f0f0f0;
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
             font-size: 12px;
-            color: #999;
-            margin-top: 5px;
+            margin-top: 8px;
         }
 
-        /* Область сообщений */
         .messages-area {
             flex: 1;
             overflow-y: auto;
@@ -149,24 +194,11 @@
             background: #f5f5f5;
         }
 
-        /* Сообщение */
         .message {
             max-width: 75%;
             padding: 10px 15px;
             border-radius: 20px;
             word-wrap: break-word;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .message.sent {
@@ -184,6 +216,21 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
+        .message-sender {
+            font-size: 11px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .message.sent .message-sender {
+            text-align: right;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .message.received .message-sender {
+            color: #667eea;
+        }
+
         .message-time {
             font-size: 10px;
             margin-top: 5px;
@@ -194,7 +241,6 @@
             text-align: right;
         }
 
-        /* Поле ввода */
         .input-area {
             background: white;
             padding: 15px 20px;
@@ -209,7 +255,6 @@
             border: 2px solid #e0e0e0;
             border-radius: 25px;
             font-size: 16px;
-            transition: all 0.3s;
         }
 
         .input-area input:focus {
@@ -226,28 +271,8 @@
             border-radius: 25px;
             font-size: 20px;
             cursor: pointer;
-            transition: transform 0.2s;
         }
 
-        .input-area button:active {
-            transform: scale(0.95);
-        }
-
-        /* Скроллбар */
-        .messages-area::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .messages-area::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-
-        .messages-area::-webkit-scrollbar-thumb {
-            background: #667eea;
-            border-radius: 5px;
-        }
-
-        /* Индикатор загрузки */
         .loading {
             text-align: center;
             color: #999;
@@ -258,10 +283,9 @@
 </head>
 <body>
     <div class="container">
-        <!-- Экран пароля -->
         <div class="password-screen" id="passwordScreen">
             <div class="password-box">
-                <h2>🔒 Приватный чат</h2>
+                <h2>🔒 KKgram</h2>
                 <p>Введите пароль, чтобы продолжить</p>
                 <input type="password" id="passwordInput" placeholder="Пароль" autocomplete="off">
                 <button onclick="checkPassword()">Войти</button>
@@ -269,11 +293,22 @@
             </div>
         </div>
 
-        <!-- Экран чата -->
+        <div class="user-select-screen" id="userSelectScreen" style="display: none;">
+            <div class="user-select-box">
+                <h2>✨ Кто ты?</h2>
+                <p>Выбери, от чьего имени будешь писать</p>
+                <div class="user-buttons">
+                    <button class="user-btn katya" onclick="selectUser('Катя')">🌸 Катя</button>
+                    <button class="user-btn kirill" onclick="selectUser('Кирилл')">💙 Кирилл</button>
+                </div>
+            </div>
+        </div>
+
         <div class="chat-screen" id="chatScreen">
             <div class="chat-header">
-                <h1>Чат</h1>
-                <p>Ток наш</p>
+                <h1>❤️ KKgram ❤️</h1>
+                <p>Только для нас двоих</p>
+                <div class="current-user-badge" id="currentUserBadge"></div>
             </div>
             <div class="messages-area" id="messagesArea">
                 <div class="loading">Загрузка сообщений...</div>
@@ -285,45 +320,69 @@
         </div>
     </div>
 
-    <!-- Подключаем Firebase -->
     <script type="module">
-        // ⚠️ ЗДЕСЬ ТЫ ДОЛЖЕН ЗАМЕНИТЬ КЛЮЧИ НА СВОИ ИЗ FIREBASE ⚠️
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         
-        // Конфигурация Firebase (СКОПИРУЙ СЮДА СВОИ ДАННЫЕ ИЗ FIREBASE)
         const firebaseConfig = {
             apiKey: "AIzaSyC3wZh5S5lcFaj43cLpKp8_dGNRixssASg",
             authDomain: "chat-2525a.firebaseapp.com",
             projectId: "chat-2525a",
             storageBucket: "chat-2525a.firebasestorage.app",
             messagingSenderId: "522782029051",
-            appId: "1:522782029051:web:a8dadabbae6e78024e2c5e",
-            measurementId: "G-4W3R9FMVQM"
-    };
+            appId: "1:522782029051:web:a8dadabbae6e78024e2c5e"
+        };
         
-        // Инициализация
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
         
-        // Делаем функции глобальными
-        window.db = db;
+        // 🔧 ИЗМЕНИ ЭТИ ДАННЫЕ (создай пользователя в Firebase Authentication)
+        const EMAIL = "chat@kkgram.com";  // ← Твой email из Firebase Auth
+        const PASSWORD = "passwordforkkgram";  // ← Твой пароль из Firebase Auth
         
-        // Пароль для входа (ТЫ МЕНЯЕШЬ ЕГО НА СВОЙ)
-        const CORRECT_PASSWORD = "1702"; // ← ИЗМЕНИ ЭТОТ ПАРОЛЬ
+        // 🔐 СЕКРЕТНЫЙ ПАРОЛЬ ДЛЯ ВХОДА В ЧАТ (придумайте вместе)
+        const CHAT_PASSWORD = "1702";  // ← Этот пароль будут вводить Катя и Кирилл
         
-        // Функция проверки пароля
-        window.checkPassword = function() {
+        let currentUser = null;
+        
+        async function loginToFirebase() {
+            try {
+                await signInWithEmailAndPassword(auth, EMAIL, PASSWORD);
+                console.log("✅ Успешный вход в Firebase");
+                return true;
+            } catch (error) {
+                console.error("❌ Ошибка входа:", error);
+                if (error.code === 'auth/user-not-found') {
+                    alert(`Пользователь не найден!\n\nСоздай его в Firebase Console:\n1. Authentication → Users\n2. Add user\n3. Email: ${EMAIL}\n4. Password: ${PASSWORD}`);
+                } else if (error.code === 'auth/wrong-password') {
+                    alert("Неверный пароль Firebase. Проверь PASSWORD в коде.");
+                } else if (error.code === 'auth/invalid-email') {
+                    alert("Неверный формат email. Используй email вида: name@example.com");
+                }
+                return false;
+            }
+        }
+        
+        window.checkPassword = async function() {
             const input = document.getElementById('passwordInput').value;
             const errorMsg = document.getElementById('errorMsg');
             
-            if (input === CORRECT_PASSWORD) {
-                // Скрываем экран пароля, показываем чат
-                document.getElementById('passwordScreen').style.display = 'none';
-                document.getElementById('chatScreen').style.display = 'flex';
-                // Загружаем сообщения
-                loadMessages();
+            if (input === CHAT_PASSWORD) {
+                const loggedIn = await loginToFirebase();
+                if (loggedIn) {
+                    document.getElementById('passwordScreen').style.display = 'none';
+                    document.getElementById('userSelectScreen').style.display = 'flex';
+                } else {
+                    errorMsg.textContent = 'Ошибка подключения к серверу';
+                    errorMsg.style.display = 'block';
+                    setTimeout(() => {
+                        errorMsg.style.display = 'none';
+                    }, 2000);
+                }
             } else {
+                errorMsg.textContent = 'Неверный пароль!';
                 errorMsg.style.display = 'block';
                 setTimeout(() => {
                     errorMsg.style.display = 'none';
@@ -331,8 +390,20 @@
             }
         };
         
-        // Отправка сообщения
+        window.selectUser = function(userName) {
+            currentUser = userName;
+            document.getElementById('userSelectScreen').style.display = 'none';
+            document.getElementById('chatScreen').style.display = 'flex';
+            document.getElementById('currentUserBadge').innerHTML = `Ты говоришь как ${userName}`;
+            loadMessages();
+        };
+        
         window.sendMessage = async function() {
+            if (!currentUser) {
+                alert("Сначала выбери, кто ты");
+                return;
+            }
+            
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
             
@@ -341,22 +412,41 @@
             try {
                 await addDoc(collection(db, 'messages'), {
                     text: text,
+                    sender: currentUser,
                     timestamp: serverTimestamp(),
-                    // Можно добавить имя отправителя, если хочешь
                 });
                 input.value = '';
-                // Автоскролл вниз
                 const messagesArea = document.getElementById('messagesArea');
                 setTimeout(() => {
                     messagesArea.scrollTop = messagesArea.scrollHeight;
                 }, 100);
             } catch (error) {
-                console.error('Ошибка отправки:', error);
-                alert('Не удалось отправить сообщение. Проверь интернет ❤️');
+                console.error('Ошибка:', error);
+                alert('Не удалось отправить сообщение. Проверь правила Firestore!');
             }
         };
         
-        // Загрузка сообщений
+        function formatDateTime(timestamp) {
+            if (!timestamp) return '';
+            const date = timestamp.toDate();
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            
+            const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+            
+            if (msgDate.getTime() === today.getTime()) {
+                return `Сегодня в ${timeStr}`;
+            }
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (msgDate.getTime() === yesterday.getTime()) {
+                return `Вчера в ${timeStr}`;
+            }
+            const days = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+            return `${date.getDate()} ${days[date.getMonth()]} ${date.getFullYear()} в ${timeStr}`;
+        }
+        
         function loadMessages() {
             const q = query(collection(db, 'messages'), orderBy('timestamp', 'asc'));
             
@@ -372,42 +462,40 @@
                 snapshot.forEach((doc) => {
                     const data = doc.data();
                     const text = data.text;
+                    const sender = data.sender || 'Кто-то';
                     const timestamp = data.timestamp;
                     
-                    // Форматируем время
-                    let timeStr = '';
-                    if (timestamp) {
-                        const date = timestamp.toDate();
-                        timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-                    }
-                    
-                    // Все сообщения отображаются как "sent" (т.к. чат общий)
-                    // Если хочешь различать отправителей, нужно добавить поле userId
+                    const isCurrentUser = (sender === currentUser);
                     const messageDiv = document.createElement('div');
-                    messageDiv.className = 'message sent';
+                    messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
+                    
+                    const timeStr = formatDateTime(timestamp);
+                    
                     messageDiv.innerHTML = `
+                        <div class="message-sender">${sender === 'Катя' ? '🌸 Катя' : '💙 Кирилл'}</div>
                         <div>${escapeHtml(text)}</div>
                         <div class="message-time">${timeStr}</div>
                     `;
                     messagesArea.appendChild(messageDiv);
                 });
                 
-                // Скролл вниз
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             }, (error) => {
-                console.error('Ошибка загрузки:', error);
-                document.getElementById('messagesArea').innerHTML = '<div class="loading">Ошибка подключения. Проверь интернет и настройки Firebase 🔧</div>';
+                console.error('Ошибка:', error);
+                if (error.code === 'permission-denied') {
+                    document.getElementById('messagesArea').innerHTML = '<div class="loading">❌ Ошибка доступа! Проверь правила Firestore Database (нужен request.auth != null)</div>';
+                } else {
+                    document.getElementById('messagesArea').innerHTML = '<div class="loading">❌ Ошибка подключения к Firebase</div>';
+                }
             });
         }
         
-        // Защита от XSS
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
         
-        // Отправка по Enter
         document.addEventListener('DOMContentLoaded', () => {
             const input = document.getElementById('messageInput');
             if (input) {
@@ -416,6 +504,14 @@
                         sendMessage();
                     }
                 });
+            }
+        });
+        
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("✅ Авторизован:", user.email);
+            } else {
+                console.log("❌ Не авторизован");
             }
         });
     </script>
