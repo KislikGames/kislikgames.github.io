@@ -145,6 +145,11 @@
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .user-btn:active {
+            transform: scale(0.95);
         }
 
         .user-btn.katya {
@@ -165,7 +170,7 @@
 
         .chat-header {
             background: white;
-            padding: 20px;
+            padding: 15px 20px;
             text-align: center;
             border-bottom: 1px solid #e0e0e0;
         }
@@ -173,6 +178,33 @@
         .chat-header h1 {
             font-size: 22px;
             color: #333;
+        }
+
+        .online-status {
+            font-size: 12px;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ccc;
+            display: inline-block;
+        }
+
+        .online-dot.online {
+            background: #4cd964;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); }
         }
 
         .current-user-badge {
@@ -199,6 +231,18 @@
             padding: 10px 15px;
             border-radius: 20px;
             word-wrap: break-word;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.sent {
@@ -255,6 +299,7 @@
             border: 2px solid #e0e0e0;
             border-radius: 25px;
             font-size: 16px;
+            transition: all 0.3s;
         }
 
         .input-area input:focus {
@@ -271,6 +316,24 @@
             border-radius: 25px;
             font-size: 20px;
             cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .input-area button:active {
+            transform: scale(0.95);
+        }
+
+        .messages-area::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .messages-area::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .messages-area::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 5px;
         }
 
         .loading {
@@ -278,6 +341,21 @@
             color: #999;
             padding: 20px;
             font-size: 14px;
+        }
+
+        .notification-permission {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 12px;
+            z-index: 30;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
     </style>
 </head>
@@ -307,7 +385,10 @@
         <div class="chat-screen" id="chatScreen">
             <div class="chat-header">
                 <h1>❤️ KKgram ❤️</h1>
-                <p>Только для нас двоих</p>
+                <div class="online-status" id="onlineStatus">
+                    <span class="online-dot" id="onlineDot"></span>
+                    <span id="onlineText">Проверка статуса...</span>
+                </div>
                 <div class="current-user-badge" id="currentUserBadge"></div>
             </div>
             <div class="messages-area" id="messagesArea">
@@ -320,9 +401,13 @@
         </div>
     </div>
 
+    <div class="notification-permission" id="notifPermissionBtn" onclick="requestNotificationPermission()">
+        🔔 Нажми, чтобы включить уведомления
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         
         const firebaseConfig = {
@@ -338,31 +423,121 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         
-        // 🔧 ИЗМЕНИ ЭТИ ДАННЫЕ (создай пользователя в Firebase Authentication)
-        const EMAIL = "chat@kkgram.com";  // ← Твой email из Firebase Auth
-        const PASSWORD = "passwordforkkgram";  // ← Твой пароль из Firebase Auth
-        
-        // 🔐 СЕКРЕТНЫЙ ПАРОЛЬ ДЛЯ ВХОДА В ЧАТ (придумайте вместе)
-        const CHAT_PASSWORD = "1702";  // ← Этот пароль будут вводить Катя и Кирилл
+        // 🔧 ИЗМЕНИ ЭТИ ДАННЫЕ
+        const EMAIL = "chat@kkgram.com";
+        const PASSWORD = "passwordforkkgram";
+        const CHAT_PASSWORD = "1702";
         
         let currentUser = null;
+        let notificationsEnabled = false;
+        let lastMessageId = null;
         
         async function loginToFirebase() {
             try {
                 await signInWithEmailAndPassword(auth, EMAIL, PASSWORD);
-                console.log("✅ Успешный вход в Firebase");
+                console.log("✅ Вход в Firebase");
                 return true;
             } catch (error) {
-                console.error("❌ Ошибка входа:", error);
-                if (error.code === 'auth/user-not-found') {
-                    alert(`Пользователь не найден!\n\nСоздай его в Firebase Console:\n1. Authentication → Users\n2. Add user\n3. Email: ${EMAIL}\n4. Password: ${PASSWORD}`);
-                } else if (error.code === 'auth/wrong-password') {
-                    alert("Неверный пароль Firebase. Проверь PASSWORD в коде.");
-                } else if (error.code === 'auth/invalid-email') {
-                    alert("Неверный формат email. Используй email вида: name@example.com");
-                }
+                console.error("Ошибка:", error);
+                alert(`Ошибка: ${error.code}\n\nСоздай пользователя в Firebase Authentication!`);
                 return false;
             }
+        }
+        
+        // Запрос разрешения на уведомления
+        window.requestNotificationPermission = async function() {
+            if (!('Notification' in window)) {
+                alert("Твой браузер не поддерживает уведомления");
+                return;
+            }
+            
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                notificationsEnabled = true;
+                document.getElementById('notifPermissionBtn').style.display = 'none';
+                console.log("✅ Уведомления включены");
+                // Тестовое уведомление
+                new Notification("🔔 Уведомления включены!", {
+                    body: "Теперь ты будешь получать оповещения о новых сообщениях",
+                    icon: "https://emojicdn.elk.sh/✅"
+                });
+            } else {
+                alert("Без уведомлений ты можешь пропустить сообщения от Кати/Кирилла 💔");
+            }
+        };
+        
+        // Отправка уведомления (без текста сообщения!)
+        function sendNotification(senderName) {
+            if (!notificationsEnabled) {
+                console.log("Уведомления не включены");
+                return;
+            }
+            
+            // Проверяем, что вкладка не активна
+            if (!document.hidden) {
+                console.log("Вкладка активна, уведомление не отправлено");
+                return;
+            }
+            
+            try {
+                const notification = new Notification("🔔 Новое сообщение в KKgram", {
+                    body: `📩 У тебя новое сообщение от ${senderName}! ❤️`,
+                    icon: "https://emojicdn.elk.sh/💬",
+                    silent: false,
+                    vibrate: [200, 100, 200]
+                });
+                
+                // При клике на уведомление - фокусируемся на вкладке
+                notification.onclick = function() {
+                    window.focus();
+                    notification.close();
+                };
+                
+                console.log("✅ Уведомление отправлено");
+            } catch (error) {
+                console.error("Ошибка при отправке уведомления:", error);
+            }
+        }
+        
+        // Обновление статуса онлайн
+        async function updateOnlineStatus(isOnline) {
+            if (!currentUser) return;
+            const userStatusRef = doc(db, 'onlineStatus', currentUser);
+            try {
+                if (isOnline) {
+                    await setDoc(userStatusRef, {
+                        online: true,
+                        lastSeen: serverTimestamp(),
+                        user: currentUser
+                    });
+                } else {
+                    await updateDoc(userStatusRef, {
+                        online: false,
+                        lastSeen: serverTimestamp()
+                    });
+                }
+            } catch (error) {
+                console.error("Ошибка статуса:", error);
+            }
+        }
+        
+        // Следим за статусом другого пользователя
+        function watchOtherUserStatus() {
+            const otherUser = currentUser === 'Катя' ? 'Кирилл' : 'Катя';
+            const otherUserRef = doc(db, 'onlineStatus', otherUser);
+            
+            onSnapshot(otherUserRef, (doc) => {
+                const onlineDot = document.getElementById('onlineDot');
+                const onlineText = document.getElementById('onlineText');
+                
+                if (doc.exists() && doc.data().online === true) {
+                    onlineDot.className = 'online-dot online';
+                    onlineText.innerHTML = `${otherUser} в сети 🟢`;
+                } else {
+                    onlineDot.className = 'online-dot';
+                    onlineText.innerHTML = `${otherUser} не в сети ⚫`;
+                }
+            });
         }
         
         window.checkPassword = async function() {
@@ -375,14 +550,10 @@
                     document.getElementById('passwordScreen').style.display = 'none';
                     document.getElementById('userSelectScreen').style.display = 'flex';
                 } else {
-                    errorMsg.textContent = 'Ошибка подключения к серверу';
+                    errorMsg.textContent = 'Ошибка подключения';
                     errorMsg.style.display = 'block';
-                    setTimeout(() => {
-                        errorMsg.style.display = 'none';
-                    }, 2000);
                 }
             } else {
-                errorMsg.textContent = 'Неверный пароль!';
                 errorMsg.style.display = 'block';
                 setTimeout(() => {
                     errorMsg.style.display = 'none';
@@ -395,6 +566,25 @@
             document.getElementById('userSelectScreen').style.display = 'none';
             document.getElementById('chatScreen').style.display = 'flex';
             document.getElementById('currentUserBadge').innerHTML = `Ты говоришь как ${userName}`;
+            
+            // Запускаем онлайн статус
+            updateOnlineStatus(true);
+            watchOtherUserStatus();
+            
+            // При закрытии вкладки - уходим оффлайн
+            window.addEventListener('beforeunload', () => {
+                updateOnlineStatus(false);
+            });
+            
+            // Также уходим оффлайн при сворачивании страницы
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    updateOnlineStatus(false);
+                } else {
+                    updateOnlineStatus(true);
+                }
+            });
+            
             loadMessages();
         };
         
@@ -406,7 +596,6 @@
             
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
-            
             if (text === '') return;
             
             try {
@@ -416,13 +605,13 @@
                     timestamp: serverTimestamp(),
                 });
                 input.value = '';
-                const messagesArea = document.getElementById('messagesArea');
                 setTimeout(() => {
-                    messagesArea.scrollTop = messagesArea.scrollHeight;
+                    const area = document.getElementById('messagesArea');
+                    area.scrollTop = area.scrollHeight;
                 }, 100);
             } catch (error) {
                 console.error('Ошибка:', error);
-                alert('Не удалось отправить сообщение. Проверь правила Firestore!');
+                alert('Не удалось отправить сообщение');
             }
         };
         
@@ -432,17 +621,12 @@
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-            
             const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
             
-            if (msgDate.getTime() === today.getTime()) {
-                return `Сегодня в ${timeStr}`;
-            }
+            if (msgDate.getTime() === today.getTime()) return `Сегодня в ${timeStr}`;
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
-            if (msgDate.getTime() === yesterday.getTime()) {
-                return `Вчера в ${timeStr}`;
-            }
+            if (msgDate.getTime() === yesterday.getTime()) return `Вчера в ${timeStr}`;
             const days = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
             return `${date.getDate()} ${days[date.getMonth()]} ${date.getFullYear()} в ${timeStr}`;
         }
@@ -452,6 +636,23 @@
             
             onSnapshot(q, (snapshot) => {
                 const messagesArea = document.getElementById('messagesArea');
+                
+                // Сохраняем последний ID сообщения для проверки новых
+                if (snapshot.docs.length > 0) {
+                    const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+                    const newMessageId = lastDoc.id;
+                    
+                    // Если есть новое сообщение и оно не от текущего пользователя
+                    if (lastMessageId !== newMessageId && lastMessageId !== null) {
+                        const lastMessage = lastDoc.data();
+                        if (lastMessage.sender !== currentUser) {
+                            console.log("Новое сообщение от:", lastMessage.sender);
+                            sendNotification(lastMessage.sender);
+                        }
+                    }
+                    lastMessageId = newMessageId;
+                }
+                
                 messagesArea.innerHTML = '';
                 
                 if (snapshot.empty) {
@@ -464,11 +665,9 @@
                     const text = data.text;
                     const sender = data.sender || 'Кто-то';
                     const timestamp = data.timestamp;
-                    
                     const isCurrentUser = (sender === currentUser);
                     const messageDiv = document.createElement('div');
                     messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
-                    
                     const timeStr = formatDateTime(timestamp);
                     
                     messageDiv.innerHTML = `
@@ -482,11 +681,7 @@
                 messagesArea.scrollTop = messagesArea.scrollHeight;
             }, (error) => {
                 console.error('Ошибка:', error);
-                if (error.code === 'permission-denied') {
-                    document.getElementById('messagesArea').innerHTML = '<div class="loading">❌ Ошибка доступа! Проверь правила Firestore Database (нужен request.auth != null)</div>';
-                } else {
-                    document.getElementById('messagesArea').innerHTML = '<div class="loading">❌ Ошибка подключения к Firebase</div>';
-                }
+                document.getElementById('messagesArea').innerHTML = '<div class="loading">❌ Ошибка подключения</div>';
             });
         }
         
@@ -500,19 +695,24 @@
             const input = document.getElementById('messageInput');
             if (input) {
                 input.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        sendMessage();
-                    }
+                    if (e.key === 'Enter') sendMessage();
                 });
+            }
+            
+            // Проверяем, разрешены ли уже уведомления
+            if ('Notification' in window && Notification.permission === 'granted') {
+                notificationsEnabled = true;
+                document.getElementById('notifPermissionBtn').style.display = 'none';
+                console.log("Уведомления уже разрешены");
+            } else if ('Notification' in window && Notification.permission === 'denied') {
+                document.getElementById('notifPermissionBtn').style.display = 'none';
+                console.log("Уведомления заблокированы браузером");
             }
         });
         
         onAuthStateChanged(auth, (user) => {
-            if (user) {
-                console.log("✅ Авторизован:", user.email);
-            } else {
-                console.log("❌ Не авторизован");
-            }
+            if (user) console.log("✅ Авторизован:", user.email);
+            else console.log("❌ Не авторизован");
         });
     </script>
 </body>
