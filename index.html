@@ -187,6 +187,7 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
+            flex-wrap: wrap;
         }
 
         .online-dot {
@@ -200,6 +201,13 @@
         .online-dot.online {
             background: #4cd964;
             animation: pulse 1.5s infinite;
+        }
+
+        .typing-indicator {
+            font-size: 11px;
+            color: #999;
+            margin-left: 10px;
+            font-style: italic;
         }
 
         @keyframes pulse {
@@ -388,6 +396,7 @@
                 <div class="online-status" id="onlineStatus">
                     <span class="online-dot" id="onlineDot"></span>
                     <span id="onlineText">Проверка статуса...</span>
+                    <span id="typingStatus" class="typing-indicator"></span>
                 </div>
                 <div class="current-user-badge" id="currentUserBadge"></div>
             </div>
@@ -407,7 +416,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         
         const firebaseConfig = {
@@ -431,6 +440,7 @@
         let currentUser = null;
         let notificationsEnabled = false;
         let lastMessageId = null;
+        let typingTimeout = null;
         
         async function loginToFirebase() {
             try {
@@ -439,12 +449,11 @@
                 return true;
             } catch (error) {
                 console.error("Ошибка:", error);
-                alert(`Ошибка: ${error.code}\n\nСоздай пользователя в Firebase Authentication!`);
+                alert(`Ошибка: ${error.code}\n\nСоздай пользователя в Firebase Authentication!\nEmail: ${EMAIL}\nПароль: ${PASSWORD}`);
                 return false;
             }
         }
         
-        // Запрос разрешения на уведомления
         window.requestNotificationPermission = async function() {
             if (!('Notification' in window)) {
                 alert("Твой браузер не поддерживает уведомления");
@@ -456,7 +465,6 @@
                 notificationsEnabled = true;
                 document.getElementById('notifPermissionBtn').style.display = 'none';
                 console.log("✅ Уведомления включены");
-                // Тестовое уведомление
                 new Notification("🔔 Уведомления включены!", {
                     body: "Теперь ты будешь получать оповещения о новых сообщениях",
                     icon: "https://emojicdn.elk.sh/✅"
@@ -466,18 +474,9 @@
             }
         };
         
-        // Отправка уведомления (без текста сообщения!)
         function sendNotification(senderName) {
-            if (!notificationsEnabled) {
-                console.log("Уведомления не включены");
-                return;
-            }
-            
-            // Проверяем, что вкладка не активна
-            if (!document.hidden) {
-                console.log("Вкладка активна, уведомление не отправлено");
-                return;
-            }
+            if (!notificationsEnabled) return;
+            if (!document.hidden) return;
             
             try {
                 const notification = new Notification("🔔 Новое сообщение в KKgram", {
@@ -487,7 +486,6 @@
                     vibrate: [200, 100, 200]
                 });
                 
-                // При клике на уведомление - фокусируемся на вкладке
                 notification.onclick = function() {
                     window.focus();
                     notification.close();
@@ -499,7 +497,48 @@
             }
         }
         
-        // Обновление статуса онлайн
+        // Статус печатает
+        async function updateTypingStatus(isTyping) {
+            if (!currentUser) return;
+            const typingRef = doc(db, 'typingStatus', currentUser);
+            try {
+                if (isTyping) {
+                    await setDoc(typingRef, {
+                        typing: true,
+                        timestamp: serverTimestamp()
+                    });
+                } else {
+                    await deleteDoc(typingRef);
+                }
+            } catch (error) {
+                console.error("Ошибка статуса печатает:", error);
+            }
+        }
+        
+        // Следим за статусом печатает другого пользователя
+        function watchTypingStatus() {
+            const otherUser = currentUser === 'Катя' ? 'Кирилл' : 'Катя';
+            const typingRef = doc(db, 'typingStatus', otherUser);
+            
+            onSnapshot(typingRef, (doc) => {
+                const typingStatus = document.getElementById('typingStatus');
+                if (doc.exists() && doc.data().typing === true) {
+                    typingStatus.innerHTML = `${otherUser} печатает... ✍️`;
+                } else {
+                    typingStatus.innerHTML = '';
+                }
+            });
+        }
+        
+        // Обработка ввода текста
+        function onTyping() {
+            updateTypingStatus(true);
+            if (typingTimeout) clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                updateTypingStatus(false);
+            }, 1000);
+        }
+        
         async function updateOnlineStatus(isOnline) {
             if (!currentUser) return;
             const userStatusRef = doc(db, 'onlineStatus', currentUser);
@@ -521,7 +560,6 @@
             }
         }
         
-        // Следим за статусом другого пользователя
         function watchOtherUserStatus() {
             const otherUser = currentUser === 'Катя' ? 'Кирилл' : 'Катя';
             const otherUserRef = doc(db, 'onlineStatus', otherUser);
@@ -567,16 +605,18 @@
             document.getElementById('chatScreen').style.display = 'flex';
             document.getElementById('currentUserBadge').innerHTML = `Ты говоришь как ${userName}`;
             
-            // Запускаем онлайн статус
             updateOnlineStatus(true);
             watchOtherUserStatus();
+            watchTypingStatus();
             
-            // При закрытии вкладки - уходим оффлайн
+            const messageInput = document.getElementById('messageInput');
+            messageInput.addEventListener('input', onTyping);
+            
             window.addEventListener('beforeunload', () => {
                 updateOnlineStatus(false);
+                updateTypingStatus(false);
             });
             
-            // Также уходим оффлайн при сворачивании страницы
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
                     updateOnlineStatus(false);
@@ -589,10 +629,7 @@
         };
         
         window.sendMessage = async function() {
-            if (!currentUser) {
-                alert("Сначала выбери, кто ты");
-                return;
-            }
+            if (!currentUser) return;
             
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
@@ -605,6 +642,7 @@
                     timestamp: serverTimestamp(),
                 });
                 input.value = '';
+                updateTypingStatus(false);
                 setTimeout(() => {
                     const area = document.getElementById('messagesArea');
                     area.scrollTop = area.scrollHeight;
@@ -637,12 +675,10 @@
             onSnapshot(q, (snapshot) => {
                 const messagesArea = document.getElementById('messagesArea');
                 
-                // Сохраняем последний ID сообщения для проверки новых
                 if (snapshot.docs.length > 0) {
                     const lastDoc = snapshot.docs[snapshot.docs.length - 1];
                     const newMessageId = lastDoc.id;
                     
-                    // Если есть новое сообщение и оно не от текущего пользователя
                     if (lastMessageId !== newMessageId && lastMessageId !== null) {
                         const lastMessage = lastDoc.data();
                         if (lastMessage.sender !== currentUser) {
@@ -699,7 +735,6 @@
                 });
             }
             
-            // Проверяем, разрешены ли уже уведомления
             if ('Notification' in window && Notification.permission === 'granted') {
                 notificationsEnabled = true;
                 document.getElementById('notifPermissionBtn').style.display = 'none';
